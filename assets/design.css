@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=PT+Sans&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+    font-family: 'PT Sans', sans-serif;
+    color : black;
+}
+
+.header-part, .input-part {
+    border-bottom: thin lightgrey solid;
+    background-color: #D6EAF8;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    margin-top: 20px
+}
+
+#adding-rows-button, #editing-rows-button {
+    background-color: #D4EFDF;
+}
+
+#alpha-leve-val, #stat-type-test {
+    padding-left: 20px
+}
+
+#compute-test {
+    background-color: #F6DDCC;
+}
