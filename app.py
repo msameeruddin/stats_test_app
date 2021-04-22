@@ -3,9 +3,15 @@ import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.figure_factory as ff
+import pandas as pd
 
-from dash.dependencies import Input, Output, State
+import base64
+import datetime
+import io
+
+from dash.dependencies import (Input, Output, State)
 from scipy.stats import (chi2_contingency, chi2, ttest_ind, t)
+from input_options import main_layout
 
 ###################
 external_stylesheets = [
@@ -15,7 +21,6 @@ external_stylesheets = [
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config['suppress_callback_exceptions'] = True
 app.title = 'Hypothesis Testing'
-
 server = app.server
 ###################
 
@@ -34,110 +39,61 @@ def compute_ttest_ind(dtable, alpha):
     critical = t.ppf(prob, dof)
     return prob, round(stat, 3), round(critical, 3), round(pval, 3)
 
+def parse_contents(contents, filename, date):
+    content_string = contents[0].split(',')[1]
+    decoded = base64.b64decode(content_string)
+    
+    fname, ext = filename[0].split('.')
+    df = None
+
+    try:
+        if (ext == 'csv'):
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+        elif (ext == 'xls'):
+            df = pd.read_excel(io.BytesIO(decoded))
+    except Exception as e:
+        df = None
+    
+    return df
 ###################
+
 max_col = 5
+df = 0
 
-app.layout = html.Div([
-    html.Meta(charSet='UTF-8'),
-    html.Meta(name='viewport', content='width=device-width, initial-scale=1.0'),
+app.layout = main_layout
 
-    html.Div([
-        html.Div([
-            html.H3('Statistical Hypothesis Testing', style={'textAlign' : 'center'})
-        ], className='header-part'),
-
-        html.Div([
-            html.Div([
-                dcc.Input(
-                    id='adding-rows-name',
-                    placeholder='New column name',
-                    value='',
-                    style={'padding': 10}
-                ),
-            ], className='three columns'),
-            html.Div([
-                html.Button('Add Column', id='adding-rows-button', n_clicks=0)
-            ], className='three columns')
-        ], className='row', style={'height': 50}),
-
-        html.Div([
-            dash_table.DataTable(
-                id='adding-rows-table',
-                columns=[{
-                    'name': 'Column {}'.format(i),
-                    'id': 'column-{}'.format(i),
-                    'deletable': True,
-                    'renamable': True
-                } for i in range(1, max_col)],
-                data=[
-                    {'column-{}'.format(i): None for i in range(1, max_col)}
-                ],
-                editable=True,
-                row_deletable=True
-            ),
-            html.Div([
-                html.Button('Add Row', id='editing-rows-button', n_clicks=0),
-            ], style={'paddingTop' : 10})
-        ]),
-
-        html.Div([
-            html.Div([
-                html.Div([
-                    html.Div(
-                        id='stat-type-test',
-                        children=[
-                            html.P('Test Type'),
-                        ], className='three columns'
-                    ),
-                    
-                    html.Div([
-                        dcc.Dropdown(
-                            id='test-type',
-                            options=[
-                                {'label' : 'Chi2-test', 'value' : 'chi2test'}, 
-                                {'label' : 'T-test', 'value' : 'ttest'}
-                            ],
-                            value='chi2test',
-                            clearable=False,
-                            searchable=False,
-                        )
-                    ], className='three columns'),
-                    
-                    html.Div(
-                        id='alpha-level-val',
-                        children=[
-                            html.P('Select Alpha'),
-                        ], className='three columns'
-                    ),
-
-                    html.Div([
-                        dcc.Dropdown(
-                            id='alpha-level',
-                            options=[
-                                {'label' : '1%', 'value' : 0.01}, 
-                                {'label' : '2.5%', 'value' : 0.025}, 
-                                {'label' : '5%', 'value' : 0.05}
-                            ],
-                            value=0.05,
-                            clearable=False,
-                            searchable=False,
-                        )
-                    ], className='three columns')
-                ], className='row')
-            ], className='six columns'),
-
-            html.Div([
-                html.Button('Compute Test', id='compute-test', n_clicks=0)
-            ], className='six columns', style={'textAlign' : 'center'})
-
-        ], className='input-part row'),
-
-        html.Div([
-            html.Div(id='output-conclusion')
+@app.callback(
+    Output('output-conclusion', 'children'),
+    Input('table-create-upload-option', 'value')
+)
+def set_output_layout(which_tab):
+    if (which_tab == 'c-table'):
+        return html.Div([
+            html.Div(id='output-for-create')
+        ])
+    elif (which_tab == 'u-table'):
+        return html.Div([
+            html.Div(id='output-for-upload')
         ])
 
-    ], className='container')
-])
+
+@app.callback(
+    Output('upload-option-show', 'children'),
+    Input('upload-data-file', 'contents'),
+    State('upload-data-file', 'filename'),
+    State('upload-data-file', 'last_modified')
+)
+def parse_table_data(contents, filename, date):
+    if contents is not None:
+        global df
+        df = parse_contents(contents, filename, date)
+        return html.Div([
+            dash_table.DataTable(
+                id='input-table',
+                data=df.to_dict('records'),
+                columns=[{'name': i, 'id': i, 'renamable' : False, 'deletable' : False} for i in df.columns]
+            ),
+        ], style={'height' : 150, 'overflowY' : 'scroll', 'paddingTop' : 30})
 
 @app.callback(
     Output('adding-rows-table', 'data'),
@@ -164,8 +120,10 @@ def update_columns(n_clicks, value, existing_columns):
         })
     return existing_columns
 
+######################
+
 @app.callback(
-    Output('output-conclusion', 'children'),
+    Output('output-for-create', 'children'),
     Input('alpha-level', 'value'),
     Input('test-type', 'value'),
     Input('compute-test', 'n_clicks'),
@@ -179,32 +137,29 @@ def display_output(alpha, test_type, n_clicks, rows, columns):
     if n_clicks > 0:
         try:
             data_matrix = [[row.get(c['id'], 0) for c in columns] for row in rows]
-            if data_matrix:
-                data_matrix = [[float(j) for j in i] for i in data_matrix]
-                data_response.append([' ', 'Summary'])
+            data_matrix = [[float(j) for j in i] for i in data_matrix]
+            data_response.append([' ', 'Summary'])
 
-                if (test_type == 'chi2test'):
-                    #### chi2 test ####
-                    prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
-                    data_response.append(['Type Test', 'Chi2 Test'])
-                elif (test_type == 'ttest'):
-                    #### chi2 test ####
-                    prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
-                    data_response.append(['Type Test', 'T Test (independant)'])
+            if (test_type == 'chi2test'):
+                #### chi2 test ####
+                prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
+                data_response.append(['Type Test', 'Chi2 Test'])
+            elif (test_type == 'ttest'):
+                #### t test ####
+                prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
+                data_response.append(['Type Test', 'T Test (independant)'])
 
-                data_response.append(['Level of Significance', alpha])
-                data_response.append(['Probability', prob])
-                data_response.append(['Calculated Value', stat])
-                data_response.append(['Critical Value', critical])
-                data_response.append(['p Value', pval])
-                
-                ### decision ###
-                if pval <= alpha:
-                    data_response.append(['Decision', 'Reject H0'])
-                else:
-                    data_response.append(['Decision', 'Accept H0'])
+            data_response.append(['Level of Significance', alpha])
+            data_response.append(['Probability', prob])
+            data_response.append(['Calculated Value', stat])
+            data_response.append(['Critical Value', critical])
+            data_response.append(['p Value', pval])
+            
+            ### decision ###
+            if pval <= alpha:
+                data_response.append(['Decision', 'Reject H0'])
             else:
-                res = res
+                data_response.append(['Decision', 'Accept H0'])
         except Exception as e:
             res = res
     
@@ -212,12 +167,61 @@ def display_output(alpha, test_type, n_clicks, rows, columns):
         fig_table = ff.create_table(data_response)
         return html.Div([
             dcc.Graph(
-                id='summary-table',
+                id='summary-ctable',
                 figure=fig_table
             )
         ], style={'paddingTop' : 20})
     return res
 
+
+@app.callback(
+    Output('output-for-upload', 'children'),
+    Input('alpha-level', 'value'),
+    Input('test-type', 'value'),
+    Input('compute-test', 'n_clicks'),
+)
+def display_output_upload(alpha, test_type, n_clicks):
+    data_response = []
+    res = html.P("No Data Found", style={'paddingTop' : 20})
+    
+    if n_clicks > 0:
+        try:
+            data_matrix = df.to_numpy().T
+            data_matrix = [[float(j) for j in i] for i in data_matrix]
+            data_response.append([' ', 'Summary'])
+
+            if (test_type == 'chi2test'):
+                #### chi2 test ####
+                prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
+                data_response.append(['Type Test', 'Chi2 Test'])
+            elif (test_type == 'ttest'):
+                #### t test ####
+                prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
+                data_response.append(['Type Test', 'T Test (independant)'])
+
+            data_response.append(['Level of Significance', alpha])
+            data_response.append(['Probability', prob])
+            data_response.append(['Calculated Value', stat])
+            data_response.append(['Critical Value', critical])
+            data_response.append(['p Value', pval])
+            
+            ### decision ###
+            if pval <= alpha:
+                data_response.append(['Decision', 'Reject H0'])
+            else:
+                data_response.append(['Decision', 'Accept H0'])
+        except Exception as e:
+            res = res
+    
+    if data_response:
+        fig_table = ff.create_table(data_response)
+        return html.Div([
+            dcc.Graph(
+                id='summary-utable',
+                figure=fig_table
+            )
+        ], style={'paddingTop' : 20})
+    return res
 
 
 

@@ -18,6 +18,16 @@ body {
     margin-top: 20px
 }
 
+.upload-component {
+    line-height: 35px;
+    padding: 10px;
+    border-width: 1px;
+    border-style: dashed;
+    border-radius: 5px;
+    text-align: center;
+    background-color: #F0F1F1
+}
+
 #adding-rows-button, #editing-rows-button {
     background-color: #D4EFDF;
 }
