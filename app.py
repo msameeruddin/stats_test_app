@@ -13,7 +13,6 @@ from dash.dependencies import (Input, Output, State)
 from scipy.stats import (chi2_contingency, chi2, ttest_ind, t)
 from input_options import main_layout
 
-###################
 external_stylesheets = [
     'https://codepen.io/chriddyp/pen/bWLwgP.css',
 ]
@@ -22,8 +21,8 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.config['suppress_callback_exceptions'] = True
 app.title = 'Hypothesis Testing'
 server = app.server
-###################
 
+###################
 def compute_chi2_test(dtable, alpha):
     prob = 1 - alpha
     stat, pval, dof, expected = chi2_contingency(dtable)
@@ -55,6 +54,33 @@ def parse_contents(contents, filename, date):
         df = None
     
     return df
+
+def get_test_response(data_matrix, test_type, alpha):
+    data_response = []
+    data_response.append([' ', 'Summary'])
+
+    if (test_type == 'chi2test'):
+        #### chi2 test ####
+        prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
+        data_response.append(['Type Test', 'Chi2 Test'])
+    elif (test_type == 'ttest'):
+        #### t test ####
+        prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
+        data_response.append(['Type Test', 'T Test (independant)'])
+
+    data_response.append(['Level of Significance', alpha])
+    data_response.append(['Probability', prob])
+    data_response.append(['Calculated Value', stat])
+    data_response.append(['Critical Value', critical])
+    data_response.append(['p Value', pval])
+    
+    ### decision ###
+    if pval <= alpha:
+        data_response.append(['Decision', 'Reject H0'])
+    else:
+        data_response.append(['Decision', 'Accept H0'])
+
+    return data_response
 ###################
 
 max_col = 5
@@ -138,28 +164,7 @@ def display_output(alpha, test_type, n_clicks, rows, columns):
         try:
             data_matrix = [[row.get(c['id'], 0) for c in columns] for row in rows]
             data_matrix = [[float(j) for j in i] for i in data_matrix]
-            data_response.append([' ', 'Summary'])
-
-            if (test_type == 'chi2test'):
-                #### chi2 test ####
-                prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
-                data_response.append(['Type Test', 'Chi2 Test'])
-            elif (test_type == 'ttest'):
-                #### t test ####
-                prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
-                data_response.append(['Type Test', 'T Test (independant)'])
-
-            data_response.append(['Level of Significance', alpha])
-            data_response.append(['Probability', prob])
-            data_response.append(['Calculated Value', stat])
-            data_response.append(['Critical Value', critical])
-            data_response.append(['p Value', pval])
-            
-            ### decision ###
-            if pval <= alpha:
-                data_response.append(['Decision', 'Reject H0'])
-            else:
-                data_response.append(['Decision', 'Accept H0'])
+            data_response = get_test_response(data_matrix=data_matrix, test_type=test_type, alpha=alpha)
         except Exception as e:
             res = res
     
@@ -186,30 +191,9 @@ def display_output_upload(alpha, test_type, n_clicks):
     
     if n_clicks > 0:
         try:
-            data_matrix = df.to_numpy().T
-            data_matrix = [[float(j) for j in i] for i in data_matrix]
-            data_response.append([' ', 'Summary'])
-
-            if (test_type == 'chi2test'):
-                #### chi2 test ####
-                prob, stat, critical, pval = compute_chi2_test(dtable=data_matrix, alpha=alpha)
-                data_response.append(['Type Test', 'Chi2 Test'])
-            elif (test_type == 'ttest'):
-                #### t test ####
-                prob, stat, critical, pval = compute_ttest_ind(dtable=data_matrix, alpha=alpha)
-                data_response.append(['Type Test', 'T Test (independant)'])
-
-            data_response.append(['Level of Significance', alpha])
-            data_response.append(['Probability', prob])
-            data_response.append(['Calculated Value', stat])
-            data_response.append(['Critical Value', critical])
-            data_response.append(['p Value', pval])
-            
-            ### decision ###
-            if pval <= alpha:
-                data_response.append(['Decision', 'Reject H0'])
-            else:
-                data_response.append(['Decision', 'Accept H0'])
+            data = df.to_numpy().T
+            data_matrix = [[float(j) for j in i] for i in data]
+            data_response = get_test_response(data_matrix=data_matrix, test_type=test_type, alpha=alpha)
         except Exception as e:
             res = res
     

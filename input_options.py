@@ -73,7 +73,7 @@ utable_comp = html.Div([
             multiple=True
         ),
     ], className='upload-component'),
-    html.P('Please make sure that the data is processed enough.', style={'color' : 'red'}),
+    html.P('* Please ensure that the data is already processed.', style={'color' : '#A610F1'}),
     html.Div(id='upload-option-show')
 ], style={'paddingTop' : 30})
 
