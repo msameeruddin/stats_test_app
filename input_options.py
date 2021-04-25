@@ -110,7 +110,7 @@ ctable_comp = html.Div([
             html.Button('Add Row', id='editing-rows-button', n_clicks=0),
         ], style={'paddingTop' : 10})
     ]),
-], style={'paddingTop' : 30})
+], style={'paddingTop' : 80})
 
 #############################################
 
@@ -125,10 +125,7 @@ main_layout = html.Div([
 
         html.Div([
             essential_inputs,
-            html.Div([
-                html.Button('Compute Test', id='compute-test', n_clicks=0)
-            ], className='six columns', style={'textAlign' : 'center'})
-        ], className='input-part row'),
+        ], className='input-part row', style={'marginTop' : 15, 'marginBottom' : 15}),
 
         html.Div([
             dcc.Tabs(
@@ -152,6 +149,15 @@ main_layout = html.Div([
                 ]
             )
         ]),
+
+        html.Div([
+            html.Button('Compute Test', id='compute-test', n_clicks=0)
+        ], className='footer-part', style={'textAlign' : 'right', 'paddingRight' : 20, 'marginTop' : 20})
+
+    ], className='flex-item-left'),
+
+    html.Div([
         html.Div(id='output-conclusion')
-    ], className='container')
-])
+    ], className='flex-item-right')
+
+], className='flex-container')

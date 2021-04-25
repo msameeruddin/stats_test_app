@@ -119,7 +119,7 @@ def parse_table_data(contents, filename, date):
                 data=df.to_dict('records'),
                 columns=[{'name': i, 'id': i, 'renamable' : False, 'deletable' : False} for i in df.columns]
             ),
-        ], style={'height' : 150, 'overflowY' : 'scroll', 'paddingTop' : 30})
+        ], style={'height' : 300, 'overflowY' : 'scroll'})
 
 @app.callback(
     Output('adding-rows-table', 'data'),
@@ -175,7 +175,7 @@ def display_output(alpha, test_type, n_clicks, rows, columns):
                 id='summary-ctable',
                 figure=fig_table
             )
-        ], style={'paddingTop' : 20})
+        ])
     return res
 
 
@@ -204,7 +204,7 @@ def display_output_upload(alpha, test_type, n_clicks):
                 id='summary-utable',
                 figure=fig_table
             )
-        ], style={'paddingTop' : 20})
+        ])
     return res
 
 
